@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import authRoutes from "./routes/auth.js";
 import vehicleRoutes from "./routes/vehicles.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 
@@ -17,5 +18,8 @@ app.use("/api/vehicles", vehicleRoutes);
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });
 });
+
+// Global error handler (must be last)
+app.use(errorHandler);
 
 export default app;

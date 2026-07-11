@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { adminMiddleware } from "../middleware/admin.js";
+import { AppError } from "../lib/appError.js";
+import { asyncHandler } from "../lib/asyncHandler.js";
 
 const router = Router();
 
@@ -32,182 +34,106 @@ const vehicleUpdateSchema = z.object({
   quantity: z.number().int().min(0).optional(),
 });
 
+function parseId(idStr: string): number {
+  const id = Number(idStr);
+  if (Number.isNaN(id)) throw new AppError(400, "Invalid vehicle ID");
+  return id;
+}
+
+async function findVehicleOrThrow(id: number) {
+  const vehicle = await prisma.vehicle.findUnique({ where: { id } });
+  if (!vehicle) throw new AppError(404, "Vehicle not found");
+  return vehicle;
+}
+
 // All vehicle routes require authentication
 router.use(authMiddleware);
 
 // GET /api/vehicles — list all
-router.get("/", async (_req: Request, res: Response) => {
-  try {
-    const vehicles = await prisma.vehicle.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-    res.json(vehicles);
-  } catch (error) {
-    console.error("List vehicles error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+router.get("/", asyncHandler(async (_req: Request, res: Response) => {
+  const vehicles = await prisma.vehicle.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+  res.json(vehicles);
+}));
 
 // GET /api/vehicles/:id — get by id
-router.get("/:id", async (req: Request, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-    if (Number.isNaN(id)) {
-      res.status(400).json({ error: "Invalid vehicle ID" });
-      return;
-    }
-
-    const vehicle = await prisma.vehicle.findUnique({ where: { id } });
-    if (!vehicle) {
-      res.status(404).json({ error: "Vehicle not found" });
-      return;
-    }
-
-    res.json(vehicle);
-  } catch (error) {
-    console.error("Get vehicle error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+router.get("/:id", asyncHandler(async (req: Request, res: Response) => {
+  const id = parseId(req.params.id);
+  const vehicle = await findVehicleOrThrow(id);
+  res.json(vehicle);
+}));
 
 // POST /api/vehicles — create (admin only)
-router.post("/", adminMiddleware, async (req: Request, res: Response) => {
-  try {
-    const parsed = vehicleSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.errors[0].message });
-      return;
-    }
+router.post("/", adminMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const parsed = vehicleSchema.safeParse(req.body);
+  if (!parsed.success) throw new AppError(400, parsed.error.errors[0].message);
 
-    const vehicle = await prisma.vehicle.create({ data: parsed.data });
-    res.status(201).json(vehicle);
-  } catch (error) {
-    console.error("Create vehicle error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+  const vehicle = await prisma.vehicle.create({ data: parsed.data });
+  res.status(201).json(vehicle);
+}));
 
 // PUT /api/vehicles/:id — update (admin only)
-router.put("/:id", adminMiddleware, async (req: Request, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-    if (Number.isNaN(id)) {
-      res.status(400).json({ error: "Invalid vehicle ID" });
-      return;
-    }
+router.put("/:id", adminMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const id = parseId(req.params.id);
 
-    const parsed = vehicleUpdateSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.errors[0].message });
-      return;
-    }
+  const parsed = vehicleUpdateSchema.safeParse(req.body);
+  if (!parsed.success) throw new AppError(400, parsed.error.errors[0].message);
 
-    const existing = await prisma.vehicle.findUnique({ where: { id } });
-    if (!existing) {
-      res.status(404).json({ error: "Vehicle not found" });
-      return;
-    }
+  await findVehicleOrThrow(id);
 
-    const vehicle = await prisma.vehicle.update({
-      where: { id },
-      data: parsed.data,
-    });
-    res.json(vehicle);
-  } catch (error) {
-    console.error("Update vehicle error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+  const vehicle = await prisma.vehicle.update({
+    where: { id },
+    data: parsed.data,
+  });
+  res.json(vehicle);
+}));
 
 // DELETE /api/vehicles/:id — delete (admin only)
-router.delete("/:id", adminMiddleware, async (req: Request, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-    if (Number.isNaN(id)) {
-      res.status(400).json({ error: "Invalid vehicle ID" });
-      return;
-    }
-
-    const existing = await prisma.vehicle.findUnique({ where: { id } });
-    if (!existing) {
-      res.status(404).json({ error: "Vehicle not found" });
-      return;
-    }
-
-    await prisma.vehicle.delete({ where: { id } });
-    res.status(204).send();
-  } catch (error) {
-    console.error("Delete vehicle error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+router.delete("/:id", adminMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const id = parseId(req.params.id);
+  await findVehicleOrThrow(id);
+  await prisma.vehicle.delete({ where: { id } });
+  res.status(204).send();
+}));
 
 // POST /api/vehicles/:id/purchase — purchase (any auth user)
-router.post("/:id/purchase", async (req: Request, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-    if (Number.isNaN(id)) {
-      res.status(400).json({ error: "Invalid vehicle ID" });
-      return;
-    }
+router.post("/:id/purchase", asyncHandler(async (req: Request, res: Response) => {
+  const id = parseId(req.params.id);
 
-    const parsed = purchaseSchema.safeParse(req.body);
-    const purchaseQty = parsed.success ? parsed.data.quantity : 1;
+  const parsed = purchaseSchema.safeParse(req.body);
+  const purchaseQty = parsed.success ? parsed.data.quantity : 1;
 
-    const vehicle = await prisma.vehicle.findUnique({ where: { id } });
-    if (!vehicle) {
-      res.status(404).json({ error: "Vehicle not found" });
-      return;
-    }
+  const vehicle = await findVehicleOrThrow(id);
 
-    if (vehicle.quantity < purchaseQty) {
-      res.status(400).json({
-        error: `Insufficient stock. Available: ${vehicle.quantity}, requested: ${purchaseQty}`,
-      });
-      return;
-    }
-
-    const updated = await prisma.vehicle.update({
-      where: { id },
-      data: { quantity: { decrement: purchaseQty } },
-    });
-    res.json(updated);
-  } catch (error) {
-    console.error("Purchase error:", error);
-    res.status(500).json({ error: "Internal server error" });
+  if (vehicle.quantity < purchaseQty) {
+    throw new AppError(
+      400,
+      `Insufficient stock. Available: ${vehicle.quantity}, requested: ${purchaseQty}`,
+    );
   }
-});
+
+  const updated = await prisma.vehicle.update({
+    where: { id },
+    data: { quantity: { decrement: purchaseQty } },
+  });
+  res.json(updated);
+}));
 
 // POST /api/vehicles/:id/restock — restock (admin only)
-router.post("/:id/restock", adminMiddleware, async (req: Request, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-    if (Number.isNaN(id)) {
-      res.status(400).json({ error: "Invalid vehicle ID" });
-      return;
-    }
+router.post("/:id/restock", adminMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const id = parseId(req.params.id);
 
-    const parsed = restockSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.errors[0].message });
-      return;
-    }
+  const parsed = restockSchema.safeParse(req.body);
+  if (!parsed.success) throw new AppError(400, parsed.error.errors[0].message);
 
-    const vehicle = await prisma.vehicle.findUnique({ where: { id } });
-    if (!vehicle) {
-      res.status(404).json({ error: "Vehicle not found" });
-      return;
-    }
+  await findVehicleOrThrow(id);
 
-    const updated = await prisma.vehicle.update({
-      where: { id },
-      data: { quantity: { increment: parsed.data.quantity } },
-    });
-    res.json(updated);
-  } catch (error) {
-    console.error("Restock error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+  const updated = await prisma.vehicle.update({
+    where: { id },
+    data: { quantity: { increment: parsed.data.quantity } },
+  });
+  res.json(updated);
+}));
 
 export default router;
