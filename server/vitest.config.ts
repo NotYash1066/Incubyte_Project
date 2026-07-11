@@ -6,6 +6,12 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    env: {
+      DATABASE_URL: "file:./test.db",
+      JWT_SECRET: "test-secret",
+      JWT_EXPIRES_IN: "24h",
+    },
+    setupFiles: ["./tests/helpers/setup.ts"],
   },
   resolve: {
     alias: {
