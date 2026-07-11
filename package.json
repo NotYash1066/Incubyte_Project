@@ -1,0 +1,15 @@
+{
+  "name": "car-dealership-inventory",
+  "private": true,
+  "workspaces": ["server", "client"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w server && npm run build -w client",
+    "test": "npm run test -w server && npm run test -w client",
+    "test:server": "npm run test -w server",
+    "test:client": "npm run test -w client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
