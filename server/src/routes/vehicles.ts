@@ -15,6 +15,14 @@ const vehicleSchema = z.object({
   quantity: z.number().int().min(0).default(0),
 });
 
+const purchaseSchema = z.object({
+  quantity: z.number().int().positive().default(1),
+});
+
+const restockSchema = z.object({
+  quantity: z.number().int().positive("Restock quantity must be positive").default(1),
+});
+
 const vehicleUpdateSchema = z.object({
   make: z.string().min(1).optional(),
   model: z.string().min(1).optional(),
@@ -130,6 +138,74 @@ router.delete("/:id", adminMiddleware, async (req: Request, res: Response) => {
     res.status(204).send();
   } catch (error) {
     console.error("Delete vehicle error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/vehicles/:id/purchase — purchase (any auth user)
+router.post("/:id/purchase", async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) {
+      res.status(400).json({ error: "Invalid vehicle ID" });
+      return;
+    }
+
+    const parsed = purchaseSchema.safeParse(req.body);
+    const purchaseQty = parsed.success ? parsed.data.quantity : 1;
+
+    const vehicle = await prisma.vehicle.findUnique({ where: { id } });
+    if (!vehicle) {
+      res.status(404).json({ error: "Vehicle not found" });
+      return;
+    }
+
+    if (vehicle.quantity < purchaseQty) {
+      res.status(400).json({
+        error: `Insufficient stock. Available: ${vehicle.quantity}, requested: ${purchaseQty}`,
+      });
+      return;
+    }
+
+    const updated = await prisma.vehicle.update({
+      where: { id },
+      data: { quantity: { decrement: purchaseQty } },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error("Purchase error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/vehicles/:id/restock — restock (admin only)
+router.post("/:id/restock", adminMiddleware, async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) {
+      res.status(400).json({ error: "Invalid vehicle ID" });
+      return;
+    }
+
+    const parsed = restockSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.errors[0].message });
+      return;
+    }
+
+    const vehicle = await prisma.vehicle.findUnique({ where: { id } });
+    if (!vehicle) {
+      res.status(404).json({ error: "Vehicle not found" });
+      return;
+    }
+
+    const updated = await prisma.vehicle.update({
+      where: { id },
+      data: { quantity: { increment: parsed.data.quantity } },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error("Restock error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
