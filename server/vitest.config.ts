@@ -12,6 +12,7 @@ export default defineConfig({
       JWT_EXPIRES_IN: "24h",
     },
     setupFiles: ["./tests/helpers/setup.ts"],
+    fileParallelism: false,
   },
   resolve: {
     alias: {

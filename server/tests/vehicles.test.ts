@@ -19,9 +19,7 @@ beforeAll(async () => {
   adminToken = admin.token;
 });
 
-afterAll(async () => {
-  await cleanDatabase();
-});
+// afterAll intentionally omitted — cleanDatabase in beforeAll of each file is sufficient
 
 describe("GET /api/vehicles", () => {
   it("should return 401 without auth token", async () => {

@@ -8,10 +8,6 @@ describe("POST /api/auth/register", () => {
     await cleanDatabase();
   });
 
-  afterAll(async () => {
-    await cleanDatabase();
-  });
-
   it("should register a new user and return a token", async () => {
     const res = await request(app)
       .post("/api/auth/register")
@@ -83,10 +79,6 @@ describe("POST /api/auth/login", () => {
       password: "password123",
       name: "Login User",
     });
-  });
-
-  afterAll(async () => {
-    await cleanDatabase();
   });
 
   it("should login with valid credentials and return a token", async () => {
