@@ -57,7 +57,7 @@ router.post("/register", authLimiter, asyncHandler(async (req: Request, res: Res
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    throw new AppError(409, "Email already registered");
+    throw new AppError(409, "Registration failed");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);

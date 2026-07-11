@@ -143,24 +143,31 @@ router.post("/:id/purchase", asyncHandler(async (req: Request, res: Response) =>
   const id = parseId(req.params.id as string);
 
   const parsed = purchaseSchema.safeParse(req.body);
-  const purchaseQty = parsed.success ? parsed.data.quantity : 1;
+  if (!parsed.success) throw new AppError(400, parsed.error.errors[0].message);
+
+  const purchaseQty = parsed.data.quantity;
 
   const updated = await prisma.$transaction(async (tx) => {
     const vehicle = await tx.vehicle.findUnique({ where: { id } });
     if (!vehicle) throw new AppError(404, "Vehicle not found");
-    if (vehicle.quantity < purchaseQty) {
+
+    const result = await tx.vehicle.updateMany({
+      where: { id, quantity: { gte: purchaseQty } },
+      data: { quantity: { decrement: purchaseQty } },
+    });
+
+    if (result.count === 0) {
       throw new AppError(
         400,
         `Insufficient stock. Available: ${vehicle.quantity}, requested: ${purchaseQty}`,
       );
     }
-    return tx.vehicle.update({
-      where: { id },
-      data: { quantity: { decrement: purchaseQty } },
-    });
+
+    return tx.vehicle.findUnique({ where: { id } });
   });
 
   res.json(updated);
+
 }));
 
 // POST /api/vehicles/:id/restock — restock (admin only)

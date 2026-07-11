@@ -74,8 +74,8 @@ npm run dev -w client   # http://localhost:5173
 ```
 
 - **Render** hosts the Express + TypeScript backend as a web service.
-  - Build: `npm install && npm run db:migrate -w server && npm run build -w server`
-  - Start: `npm run start -w server`
+  - Build: `npm install && npm run build -w server`
+  - Start: `npm run db:migrate -w server && npm run start -w server`
   - Plan: Free tier (spins down after inactivity).
 - **Vercel** hosts the React client as a static SPA with client-side routing rewrites.
   - All unmatched routes rewrite to `/index.html` (handled by `vercel.json`).
