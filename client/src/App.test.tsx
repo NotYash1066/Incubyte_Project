@@ -19,9 +19,11 @@ const server = setupServer(
   http.get('http://localhost:3001/api/vehicles/search', ({ request }) => {
     const url = new URL(request.url)
     const make = url.searchParams.get('make')
+    const model = url.searchParams.get('model')
     const category = url.searchParams.get('category')
     let filtered = [...vehicles]
     if (make) filtered = filtered.filter(v => String(v.make).toLowerCase().includes(make.toLowerCase()))
+    if (model) filtered = filtered.filter(v => String(v.model).toLowerCase().includes(model.toLowerCase()))
     if (category) filtered = filtered.filter(v => String(v.category) === category)
     return HttpResponse.json(filtered)
   }),
@@ -67,6 +69,26 @@ const server = setupServer(
     }
     return HttpResponse.json({ success: true })
   }),
+  http.post('http://localhost:3001/api/auth/register', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    if (body.email === 'existing@test.com') {
+      return HttpResponse.json({ error: 'Email already registered' }, { status: 409 })
+    }
+    return HttpResponse.json({
+      token: 'register-token',
+      user: { id: 3, email: body.email as string, name: body.name as string, role: 'USER' },
+    })
+  }),
+  http.post('http://localhost:3001/api/auth/login', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    if (body.email === 'fail@test.com') {
+      return HttpResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+    }
+    return HttpResponse.json({
+      token: 'login-token',
+      user: { id: 1, email: body.email as string, name: 'Test User', role: 'USER' },
+    })
+  }),
 )
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'bypass' }))
@@ -98,6 +120,76 @@ describe('App', () => {
       await user.click(screen.getByRole('link', { name: 'Create one' }))
       await user.click(screen.getByRole('link', { name: 'Sign in' }))
       expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
+    })
+  })
+
+  describe('register', () => {
+    it('shows password mismatch error', async () => {
+      const user = userEvent.setup()
+      render(<App />)
+      await user.click(screen.getByRole('link', { name: 'Create one' }))
+      await user.type(screen.getByPlaceholderText('Your name'), 'New User')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'new@test.com')
+      await user.type(screen.getByLabelText('Password'), 'password123')
+      await user.type(screen.getByLabelText('Confirm password'), 'different')
+      await user.click(screen.getByRole('button', { name: 'Create account' }))
+      expect(screen.getByText('Passwords do not match')).toBeInTheDocument()
+    })
+
+    it('shows short password error', async () => {
+      const user = userEvent.setup()
+      render(<App />)
+      await user.click(screen.getByRole('link', { name: 'Create one' }))
+      await user.type(screen.getByPlaceholderText('Your name'), 'New User')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'new@test.com')
+      await user.type(screen.getByLabelText('Password'), '12345')
+      await user.type(screen.getByLabelText('Confirm password'), '12345')
+      await user.click(screen.getByRole('button', { name: 'Create account' }))
+      expect(screen.getByText('Password must be at least 6 characters')).toBeInTheDocument()
+    })
+
+    it('registers successfully and redirects to dashboard', async () => {
+      const user = userEvent.setup()
+      render(<App />)
+      await user.click(screen.getByRole('link', { name: 'Create one' }))
+      await user.type(screen.getByPlaceholderText('Your name'), 'New User')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'new@test.com')
+      await user.type(screen.getByLabelText('Password'), 'password123')
+      await user.type(screen.getByLabelText('Confirm password'), 'password123')
+      await user.click(screen.getByRole('button', { name: 'Create account' }))
+      expect(await screen.findByText('Toyota Camry')).toBeInTheDocument()
+    })
+
+    it('shows API error when registration fails', async () => {
+      const user = userEvent.setup()
+      render(<App />)
+      await user.click(screen.getByRole('link', { name: 'Create one' }))
+      await user.type(screen.getByPlaceholderText('Your name'), 'Existing')
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'existing@test.com')
+      await user.type(screen.getByLabelText('Password'), 'password123')
+      await user.type(screen.getByLabelText('Confirm password'), 'password123')
+      await user.click(screen.getByRole('button', { name: 'Create account' }))
+      expect(await screen.findByText('Email already registered')).toBeInTheDocument()
+    })
+  })
+
+  describe('login', () => {
+    it('logs in successfully and redirects to dashboard', async () => {
+      const user = userEvent.setup()
+      render(<App />)
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'user@test.com')
+      await user.type(screen.getByPlaceholderText('Enter your password'), 'password123')
+      await user.click(screen.getByRole('button', { name: 'Sign in' }))
+      expect(await screen.findByText('Toyota Camry')).toBeInTheDocument()
+    })
+
+    it('shows error message on failed login', async () => {
+      const user = userEvent.setup()
+      render(<App />)
+      await user.type(screen.getByPlaceholderText('you@example.com'), 'fail@test.com')
+      await user.type(screen.getByPlaceholderText('Enter your password'), 'wrong')
+      await user.click(screen.getByRole('button', { name: 'Sign in' }))
+      expect(await screen.findByText('Invalid credentials')).toBeInTheDocument()
     })
   })
 
@@ -152,6 +244,31 @@ describe('App', () => {
       expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument()
     })
+
+    it('filters vehicles by make via search', async () => {
+      const user = userEvent.setup()
+      localStorage.setItem('token', 'fake-token')
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'USER' }))
+      render(<App />)
+      expect(await screen.findByText('Toyota Camry')).toBeInTheDocument()
+      expect(screen.getByText('Honda Civic')).toBeInTheDocument()
+      await user.type(screen.getByPlaceholderText('Make'), 'Toyota')
+      await user.click(screen.getByRole('button', { name: 'Search' }))
+      expect(screen.getByText('Toyota Camry')).toBeInTheDocument()
+      expect(screen.queryByText('Honda Civic')).not.toBeInTheDocument()
+    })
+
+    it('shows error state when API call fails', async () => {
+      server.use(
+        http.get('http://localhost:3001/api/vehicles/search', () => {
+          return HttpResponse.json({ error: 'Internal server error' }, { status: 500 })
+        }),
+      )
+      localStorage.setItem('token', 'fake-token')
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'USER' }))
+      render(<App />)
+      expect(await screen.findByText('Internal server error')).toBeInTheDocument()
+    })
   })
 
   describe('admin', () => {
@@ -201,6 +318,32 @@ describe('App', () => {
       expect(await screen.findByText('Vehicle deleted successfully')).toBeInTheDocument()
       expect(screen.queryByText('Toyota')).not.toBeInTheDocument()
       expect(screen.getByText('Honda')).toBeInTheDocument()
+    })
+  })
+
+  describe('access control', () => {
+    it('redirects non-admin users away from /admin', async () => {
+      localStorage.setItem('token', 'fake-token')
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'user@test.com', name: 'Regular User', role: 'USER' }))
+      window.history.pushState({}, '', '/admin')
+      render(<App />)
+      expect(await screen.findByText('Toyota Camry')).toBeInTheDocument()
+      expect(screen.queryByText('Vehicle Management')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('404', () => {
+    it('shows 404 page for unknown routes', () => {
+      window.history.pushState({}, '', '/nonexistent')
+      render(<App />)
+      expect(screen.getByText('404')).toBeInTheDocument()
+      expect(screen.getByText('Page not found')).toBeInTheDocument()
+    })
+
+    it('provides link back to dashboard on 404 page', () => {
+      window.history.pushState({}, '', '/nope')
+      render(<App />)
+      expect(screen.getByRole('link', { name: 'Go to Dashboard' })).toBeInTheDocument()
     })
   })
 })
