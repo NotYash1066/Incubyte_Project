@@ -13,7 +13,9 @@ export default function Navbar() {
           </Link>
           <div className="flex items-center gap-4">
             {user?.role === 'ADMIN' && (
-              <span className="text-sm text-gray-600 font-medium">Admin</span>
+              <Link to="/admin" className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                Admin
+              </Link>
             )}
             <span className="text-sm text-gray-600">
               {user?.name} ({user?.role?.toLowerCase()})
