@@ -7,7 +7,7 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     env: {
-      DATABASE_URL: "file:./test.db",
+      DATABASE_URL: "postgresql://neondb_owner:npg_Ik3KnRls0NMJ@ep-misty-dust-aohjec7o.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require",
       JWT_SECRET: "test-secret",
       JWT_EXPIRES_IN: "24h",
     },

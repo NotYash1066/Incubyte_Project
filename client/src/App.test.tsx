@@ -16,6 +16,15 @@ const server = setupServer(
   http.get('http://localhost:3001/api/vehicles', () => {
     return HttpResponse.json(vehicles)
   }),
+  http.get('http://localhost:3001/api/vehicles/search', ({ request }) => {
+    const url = new URL(request.url)
+    const make = url.searchParams.get('make')
+    const category = url.searchParams.get('category')
+    let filtered = [...vehicles]
+    if (make) filtered = filtered.filter(v => String(v.make).toLowerCase().includes(make.toLowerCase()))
+    if (category) filtered = filtered.filter(v => String(v.category) === category)
+    return HttpResponse.json(filtered)
+  }),
   http.post('http://localhost:3001/api/vehicles/:id/purchase', () => {
     return HttpResponse.json({ success: true })
   }),
@@ -132,6 +141,16 @@ describe('App', () => {
     it('redirects unauthenticated users to login', () => {
       render(<App />)
       expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
+    })
+
+    it('shows search inputs on the dashboard', async () => {
+      localStorage.setItem('token', 'fake-token')
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'USER' }))
+      render(<App />)
+      expect(await screen.findByPlaceholderText('Make')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('Model')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument()
     })
   })
 

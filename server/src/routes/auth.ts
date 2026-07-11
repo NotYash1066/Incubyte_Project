@@ -25,7 +25,7 @@ function generateToken(userId: number, role: string): string {
 
   return jwt.sign({ userId: String(userId), role }, secret, {
     expiresIn: process.env.JWT_EXPIRES_IN || "24h",
-  });
+  } as jwt.SignOptions);
 }
 
 // POST /api/auth/register

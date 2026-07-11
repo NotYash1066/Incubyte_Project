@@ -8,7 +8,7 @@ A full-stack vehicle inventory management system with authentication, role-based
 |-------|-----------|
 | **Runtime** | Node.js v24 |
 | **Server** | Express + TypeScript |
-| **Database** | SQLite (via Prisma ORM) |
+| **Database** | Neon PostgreSQL (via Prisma ORM) |
 | **Auth** | JWT (bcryptjs + jsonwebtoken) |
 | **Validation** | Zod |
 | **Client** | React 19 + TypeScript + Vite |
@@ -45,13 +45,59 @@ npm run dev -w client   # http://localhost:5173
 | Admin | admin@incubyte.com | password123 |
 | User | user@incubyte.com | password123 |
 
+## Deployment
+
+### Live URLs (placeholder)
+
+| Service | URL |
+|---------|-----|
+| **API** | `https://incubyte-dealership-api.onrender.com` |
+| **Client** | `https://incubyte-dealership.vercel.app` |
+
+> Replace these placeholder URLs with the actual deployed URLs once the services are live.
+
+### Architecture
+
+```
+                    ┌──────────────────────┐
+                    │    Vercel (CDN)       │
+                    │  React SPA (client/)  │
+                    └──────────┬───────────┘
+                               │ HTTP /api/*
+                    ┌──────────▼───────────┐
+                    │   Render (Web Service)│
+                    │  Express API (server/)│
+                    └──────────┬───────────┘
+                               │ Prisma ORM
+                    ┌──────────▼───────────┐
+                    │  Neon PostgreSQL      │
+                    │  (serverless, extern) │
+                    └──────────────────────┘
+```
+
+- **Render** hosts the Express + TypeScript backend as a web service.
+  - Build: `npm install && npm run db:migrate -w server && npm run build -w server`
+  - Start: `npm run start -w server`
+  - Plan: Free tier (spins down after inactivity).
+- **Vercel** hosts the React client as a static SPA with client-side routing rewrites.
+  - All unmatched routes rewrite to `/index.html` (handled by `vercel.json`).
+
+### Environment Variables
+
+| Variable | Source | Description |
+|----------|--------|-------------|
+| `DATABASE_URL` | Neon Dashboard | PostgreSQL connection string (serverless) |
+| `JWT_SECRET` | Generated | Secret key for signing JWTs |
+
+Set these in the Render dashboard under **Environment Variables**. Both are marked `sync: false` in `render.yaml` so they must be entered manually — never commit secrets to the repository.
+
 ## Running Tests
 
 ```bash
 # All tests (server + client)
 npm test
 
-# Server only (38 tests)
+# Server only (48 tests)
 npm test -w server
 
 # Client only (11 tests)
@@ -105,7 +151,7 @@ incubyte-project/
 │   ├── prisma/
 │   │   ├── schema.prisma    # User & Vehicle models
 │   │   └── seed.ts          # Seed data
-│   └── tests/               # 38 integration tests
+│       └── tests/               # 48 integration tests
 └── client/                 # React SPA
     ├── src/
     │   ├── components/      # Navbar, ProtectedRoute
@@ -116,9 +162,20 @@ incubyte-project/
     └── src/App.test.tsx     # 11 component tests
 ```
 
+## Screenshots
+
+![Login Page](docs/screenshots/login.png)
+*Login page with email and password fields*
+
+![Dashboard](docs/screenshots/dashboard.png)
+*Dashboard showing vehicle inventory with search, filter, and purchase options*
+
+![Admin Panel](docs/screenshots/admin.png)
+*Admin panel for vehicle management (CRUD operations)*
+
 ## Test Report
 
-### Server (38 tests, 4 test files)
+### Server (48 tests, 5 test files)
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
@@ -126,6 +183,7 @@ incubyte-project/
 | `tests/vehicles.test.ts` | 16 | CRUD operations, admin-only enforcement, auth checks |
 | `tests/inventory.test.ts` | 12 | Purchase flow, insufficient stock, restock, admin-only restock |
 | `tests/app.test.ts` | 2 | Health check, 404 handling |
+| `tests/search.test.ts` | 10 | Search by make/model/year, partial match, no-results, empty query |
 
 ### Client (11 tests, 1 test file)
 
@@ -155,6 +213,16 @@ The project followed a **TDD (Test-Driven Development)** methodology, but AI was
 4. **Orchestration**: The Sisyphus orchestrator agent managed task decomposition, parallel delegation, code review, and quality gates. Human developer provided continuous feedback and course corrections.
 
 5. **Code Quality**: The `doubly-determined-development` approach was used — every implementation decision was verified against the test suite. The refactor phase (T11) introduced `AppError`, `asyncHandler`, and a global error handler to eliminate boilerplate.
+
+### Tools Used
+
+| Tool | Usage | Impact |
+|------|-------|--------|
+| OpenCode (Sisyphus) | Orchestration agent — decomposed tasks, delegated to specialists, enforced quality gates | Reduced cognitive overhead of task switching; ensured test-first discipline |
+| Claude (via OpenCode) | Primary coding agent — wrote tests, implementation, and documentation | Accelerated development while maintaining type safety and TDD discipline |
+| Neon (Serverless PostgreSQL) | Production and test database provisioned via `neon` CLI | Eliminated local DB setup overhead; enabled parallel test/development environments |
+
+*This AI Usage Disclosure documents how AI was used throughout the development lifecycle, serving as a transparent record per Incubyte's apprenticeship requirements.*
 
 ### Verification
 

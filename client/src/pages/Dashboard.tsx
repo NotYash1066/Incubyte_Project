@@ -18,12 +18,27 @@ export default function Dashboard() {
   const [error, setError] = useState('')
   const [purchasing, setPurchasing] = useState<number | null>(null)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [searchFilters, setSearchFilters] = useState({
+    make: '',
+    model: '',
+    category: '',
+    minPrice: '',
+    maxPrice: '',
+  })
 
-  async function fetchVehicles() {
+  async function fetchVehicles(filters?: typeof searchFilters) {
     try {
       setLoading(true)
       setError('')
-      const data = await apiRequest<Vehicle[]>('/vehicles')
+      const params = new URLSearchParams()
+      const f = filters ?? searchFilters
+      if (f.make) params.set('make', f.make)
+      if (f.model) params.set('model', f.model)
+      if (f.category) params.set('category', f.category)
+      if (f.minPrice) params.set('minPrice', f.minPrice)
+      if (f.maxPrice) params.set('maxPrice', f.maxPrice)
+      const qs = params.toString()
+      const data = await apiRequest<Vehicle[]>(`/vehicles/search${qs ? `?${qs}` : ''}`)
       setVehicles(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load vehicles')
@@ -35,6 +50,17 @@ export default function Dashboard() {
   useEffect(() => {
     fetchVehicles()
   }, [])
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    await fetchVehicles(searchFilters)
+  }
+
+  function handleClear() {
+    const cleared = { make: '', model: '', category: '', minPrice: '', maxPrice: '' }
+    setSearchFilters(cleared)
+    fetchVehicles(cleared)
+  }
 
   async function handlePurchase(vehicleId: number) {
     setPurchasing(vehicleId)
@@ -99,6 +125,81 @@ export default function Dashboard() {
             {feedback.message}
           </div>
         )}
+
+        <form onSubmit={handleSearch} className="mb-6 flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-[140px]">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Make</label>
+            <input
+              type="text"
+              placeholder="Make"
+              value={searchFilters.make}
+              onChange={(e) => setSearchFilters(prev => ({ ...prev, make: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex-1 min-w-[140px]">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Model</label>
+            <input
+              type="text"
+              placeholder="Model"
+              value={searchFilters.model}
+              onChange={(e) => setSearchFilters(prev => ({ ...prev, model: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="w-full sm:w-auto min-w-[140px]">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
+            <select
+              value={searchFilters.category}
+              onChange={(e) => setSearchFilters(prev => ({ ...prev, category: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Categories</option>
+              <option value="SEDAN">Sedan</option>
+              <option value="SUV">SUV</option>
+              <option value="TRUCK">Truck</option>
+              <option value="COUPE">Coupe</option>
+              <option value="VAN">Van</option>
+            </select>
+          </div>
+          <div className="w-full sm:w-auto min-w-[120px]">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Min Price</label>
+            <input
+              type="number"
+              placeholder="Min $"
+              min="0"
+              value={searchFilters.minPrice}
+              onChange={(e) => setSearchFilters(prev => ({ ...prev, minPrice: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="w-full sm:w-auto min-w-[120px]">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Max Price</label>
+            <input
+              type="number"
+              placeholder="Max $"
+              min="0"
+              value={searchFilters.maxPrice}
+              onChange={(e) => setSearchFilters(prev => ({ ...prev, maxPrice: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Search
+            </button>
+            <button
+              type="button"
+              onClick={handleClear}
+              className="rounded-md bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+            >
+              Clear
+            </button>
+          </div>
+        </form>
 
         {vehicles.length === 0 ? (
           <p className="text-center text-gray-500 py-12">No vehicles available.</p>
