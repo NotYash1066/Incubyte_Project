@@ -8,6 +8,7 @@ build/
 *.db
 *.db-journal
 coverage/
+.omo/
 .DS_Store
 *.pem
 *.key
