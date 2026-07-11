@@ -47,14 +47,12 @@ npm run dev -w client   # http://localhost:5173
 
 ## Deployment
 
-### Live URLs (placeholder)
+### Live URLs
 
-| Service | URL |
-|---------|-----|
-| **API** | `https://incubyte-dealership-api.onrender.com` |
-| **Client** | `https://incubyte-dealership.vercel.app` |
-
-> Replace these placeholder URLs with the actual deployed URLs once the services are live.
+| Service | URL | Status |
+|---------|-----|--------|
+| **Client** | [https://incubyte-dealership.vercel.app](https://incubyte-dealership.vercel.app) | ✅ Live |
+| **API** | `https://incubyte-dealership-api.onrender.com` | 🔧 Deploy via Render Dashboard (see below) |
 
 ### Architecture
 
@@ -82,14 +80,24 @@ npm run dev -w client   # http://localhost:5173
 - **Vercel** hosts the React client as a static SPA with client-side routing rewrites.
   - All unmatched routes rewrite to `/index.html` (handled by `vercel.json`).
 
+### Deploy Backend on Render
+
+1. Go to [Render Dashboard](https://dashboard.render.com/) → **New** → **Blueprint**
+2. Connect your GitHub repo (`NotYash1066/Incubyte_Project`)
+3. Render will detect `render.yaml` and pre-fill settings
+4. **Before deploying**, add these environment variables manually (Render will prompt for `sync: false` vars):
+   - `DATABASE_URL` — your Neon PostgreSQL connection string
+   - `JWT_SECRET` — a strong random secret
+5. Click **Apply** — Render will provision the web service (~3 min)
+6. Once deployed, the API will be at `https://incubyte-dealership-api.onrender.com`
+
 ### Environment Variables
 
-| Variable | Source | Description |
-|----------|--------|-------------|
-| `DATABASE_URL` | Neon Dashboard | PostgreSQL connection string (serverless) |
-| `JWT_SECRET` | Generated | Secret key for signing JWTs |
-
-Set these in the Render dashboard under **Environment Variables**. Both are marked `sync: false` in `render.yaml` so they must be entered manually — never commit secrets to the repository.
+| Variable | Where | Description |
+|----------|-------|-------------|
+| `DATABASE_URL` | Render (manual) | PostgreSQL connection string (Neon) |
+| `JWT_SECRET` | Render (manual) | Secret key for signing JWTs |
+| `VITE_API_URL` | Vercel (set) | Frontend API target → `https://incubyte-dealership-api.onrender.com/api` |
 
 ## Running Tests
 
