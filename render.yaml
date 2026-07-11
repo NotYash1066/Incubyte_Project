@@ -2,13 +2,16 @@ services:
   - type: web
     name: incubyte-dealership-api
     env: node
-    buildCommand: npm install && npm run db:migrate -w server && npm run build -w server
+    buildCommand: npm install && npm run build -w server
     startCommand: npm run start -w server
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
-        value: 20
+        value: 24
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
         sync: false
+      - key: NODE_ENV
+        value: production
     plan: free

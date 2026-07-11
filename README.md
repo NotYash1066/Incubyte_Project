@@ -108,7 +108,7 @@ npm test
 # Server only (48 tests)
 npm test -w server
 
-# Client only (23 tests)
+# Client only (25 tests)
 npm test -w client
 ```
 
@@ -155,7 +155,7 @@ incubyte-project/
 │   │   ├── middleware/      # auth, admin, errorHandler
 │   │   ├── routes/          # auth, vehicles
 │   │   ├── app.ts           # Express app setup
-│   │   └── index.ts         # Server entry point
+│   │   └── server.ts         # Server entry point
 │   ├── prisma/
 │   │   ├── schema.prisma    # User & Vehicle models
 │   │   └── seed.ts          # Seed data
@@ -167,7 +167,7 @@ incubyte-project/
     │   ├── lib/             # apiRequest utility
     │   ├── pages/           # Login, Register, Dashboard, Admin, NotFound
     │   └── App.tsx          # Router + providers
-    └── src/App.test.tsx     # 23 component tests
+    └── src/App.test.tsx     # 25 component tests
 ```
 
 ## Screenshots
@@ -193,17 +193,17 @@ incubyte-project/
 | `tests/app.test.ts` | 2 | Health check, 404 handling |
 | `tests/search.test.ts` | 10 | Search by make/model/year, partial match, no-results, empty query |
 
-### Client (23 tests, 1 test file)
+### Client (25 tests, 1 test file)
 
 | Test Group | Tests | Coverage |
 |-----------|-------|----------|
 | Auth | 3 | Unauthenticated redirect, navigation login↔register |
 | Register | 4 | Password mismatch, short password, successful registration, API error |
 | Login | 2 | Successful login, API error message |
-| Dashboard | 7 | Vehicle list, price/stock, buy button disabled/enabled, search inputs, search filtering, API error state |
-| Admin | 3 | Admin page rendering, add vehicle form, delete vehicle |
+| Dashboard | 8 | Vehicle list, price/stock, buy button disabled/enabled, unauthenticated redirect, search inputs, search filtering, API error state |
+| Admin | 4 | Admin page rendering, add vehicle form, delete vehicle, restock |
 | Access Control | 1 | Non-admin redirected from /admin |
-| 404 | 2 | 404 page rendering, link to dashboard |
+| 404 | 3 | 404 page rendering, link to login unauthenticated, link to dashboard authenticated |
 
 ## AI Usage Disclosure
 

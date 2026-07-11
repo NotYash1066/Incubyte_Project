@@ -13,3 +13,6 @@ coverage/
 *.pem
 *.key
 .vercel
+
+server/.env
+server/.env.test

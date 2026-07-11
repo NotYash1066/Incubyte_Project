@@ -1,5 +1,9 @@
+import dotenv from "dotenv";
 import { defineConfig } from "vitest/config";
 import path from "path";
+
+// Load DATABASE_URL from root .env (shared across workspaces)
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 export default defineConfig({
   test: {
@@ -7,7 +11,7 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     env: {
-      DATABASE_URL: "postgresql://neondb_owner:npg_Ik3KnRls0NMJ@ep-misty-dust-aohjec7o.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require",
+      DATABASE_URL: process.env.DATABASE_URL || "postgresql://placeholder:placeholder@localhost:5432/test",
       JWT_SECRET: "test-secret",
       JWT_EXPIRES_IN: "24h",
     },

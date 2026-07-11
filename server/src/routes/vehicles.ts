@@ -36,8 +36,8 @@ const vehicleUpdateSchema = z.object({
 });
 
 const searchSchema = z.object({
-  make: z.string().optional(),
-  model: z.string().optional(),
+  make: z.string().max(100).optional(),
+  model: z.string().max(100).optional(),
   category: z.enum(["SEDAN", "SUV", "TRUCK", "COUPE", "VAN"]).optional(),
   minPrice: z.coerce.number().positive().optional(),
   maxPrice: z.coerce.number().positive().optional(),
@@ -138,26 +138,28 @@ router.delete("/:id", adminMiddleware, asyncHandler(async (req: Request, res: Re
   res.status(204).send();
 }));
 
-// POST /api/vehicles/:id/purchase — purchase (any auth user)
+// POST /api/vehicles/:id/purchase — purchase (any auth user, atomic)
 router.post("/:id/purchase", asyncHandler(async (req: Request, res: Response) => {
   const id = parseId(req.params.id as string);
 
   const parsed = purchaseSchema.safeParse(req.body);
   const purchaseQty = parsed.success ? parsed.data.quantity : 1;
 
-  const vehicle = await findVehicleOrThrow(id);
-
-  if (vehicle.quantity < purchaseQty) {
-    throw new AppError(
-      400,
-      `Insufficient stock. Available: ${vehicle.quantity}, requested: ${purchaseQty}`,
-    );
-  }
-
-  const updated = await prisma.vehicle.update({
-    where: { id },
-    data: { quantity: { decrement: purchaseQty } },
+  const updated = await prisma.$transaction(async (tx) => {
+    const vehicle = await tx.vehicle.findUnique({ where: { id } });
+    if (!vehicle) throw new AppError(404, "Vehicle not found");
+    if (vehicle.quantity < purchaseQty) {
+      throw new AppError(
+        400,
+        `Insufficient stock. Available: ${vehicle.quantity}, requested: ${purchaseQty}`,
+      );
+    }
+    return tx.vehicle.update({
+      where: { id },
+      data: { quantity: { decrement: purchaseQty } },
+    });
   });
+
   res.json(updated);
 }));
 

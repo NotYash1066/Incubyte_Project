@@ -101,7 +101,7 @@ describe("POST /api/auth/login", () => {
     expect(res.body).toHaveProperty("error");
   });
 
-  it("should return 400 for non-existent email", async () => {
+  it("should return 401 for non-existent email", async () => {
     const res = await request(app)
       .post("/api/auth/login")
       .send({
@@ -109,7 +109,7 @@ describe("POST /api/auth/login", () => {
         password: "password123",
       });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
     expect(res.body).toHaveProperty("error");
   });
 

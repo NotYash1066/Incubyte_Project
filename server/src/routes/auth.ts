@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -7,6 +8,23 @@ import { AppError } from "../lib/appError.js";
 import { asyncHandler } from "../lib/asyncHandler.js";
 
 const router = Router();
+
+// Rate limiting: 10 attempts per 15 min per IP on auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many attempts, please try again later" },
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many login attempts, please try again later" },
+});
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -29,7 +47,7 @@ function generateToken(userId: number, role: string): string {
 }
 
 // POST /api/auth/register
-router.post("/register", asyncHandler(async (req: Request, res: Response) => {
+router.post("/register", authLimiter, asyncHandler(async (req: Request, res: Response) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {
     throw new AppError(400, parsed.error.errors[0].message);
@@ -56,7 +74,7 @@ router.post("/register", asyncHandler(async (req: Request, res: Response) => {
 }));
 
 // POST /api/auth/login
-router.post("/login", asyncHandler(async (req: Request, res: Response) => {
+router.post("/login", loginLimiter, asyncHandler(async (req: Request, res: Response) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     throw new AppError(400, parsed.error.errors[0].message);
@@ -66,7 +84,7 @@ router.post("/login", asyncHandler(async (req: Request, res: Response) => {
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    throw new AppError(400, "Invalid email or password");
+    throw new AppError(401, "Invalid email or password");
   }
 
   const valid = await bcrypt.compare(password, user.password);

@@ -25,6 +25,14 @@ interface FormData {
 
 const CATEGORIES = ['SEDAN', 'SUV', 'TRUCK', 'COUPE', 'VAN']
 
+const CATEGORY_LABELS: Record<string, string> = {
+  SEDAN: 'Sedan',
+  SUV: 'SUV',
+  TRUCK: 'Truck',
+  COUPE: 'Coupe',
+  VAN: 'Van',
+}
+
 const emptyForm: FormData = {
   make: '',
   model: '',
@@ -49,7 +57,7 @@ export default function Admin() {
   const [restockQty, setRestockQty] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || user.role !== 'admin') {
     return <Navigate to="/" replace />
   }
 
@@ -446,7 +454,7 @@ export default function Admin() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.make}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.model}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.year}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.category}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{CATEGORY_LABELS[v.category] || v.category}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatPrice(v.price)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.quantity}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">

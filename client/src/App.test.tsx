@@ -5,18 +5,20 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import App from './App'
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
 const mockVehicles = [
-  { id: 1, make: 'Toyota', model: 'Camry', year: 2023, category: 'Sedan', price: 25000, quantity: 5 },
-  { id: 2, make: 'Honda', model: 'Civic', year: 2024, category: 'Sedan', price: 22000, quantity: 0 },
+  { id: 1, make: 'Toyota', model: 'Camry', year: 2023, category: 'SEDAN', price: 25000, quantity: 5 },
+  { id: 2, make: 'Honda', model: 'Civic', year: 2024, category: 'SEDAN', price: 22000, quantity: 0 },
 ]
 
 let vehicles: Array<Record<string, unknown>> = [...mockVehicles]
 
 const server = setupServer(
-  http.get('http://localhost:3001/api/vehicles', () => {
+  http.get(`${API_BASE}/vehicles`, () => {
     return HttpResponse.json(vehicles)
   }),
-  http.get('http://localhost:3001/api/vehicles/search', ({ request }) => {
+  http.get(`${API_BASE}/vehicles/search`, ({ request }) => {
     const url = new URL(request.url)
     const make = url.searchParams.get('make')
     const model = url.searchParams.get('model')
@@ -27,10 +29,10 @@ const server = setupServer(
     if (category) filtered = filtered.filter(v => String(v.category) === category)
     return HttpResponse.json(filtered)
   }),
-  http.post('http://localhost:3001/api/vehicles/:id/purchase', () => {
+  http.post(`${API_BASE}/vehicles/:id/purchase`, () => {
     return HttpResponse.json({ success: true })
   }),
-  http.post('http://localhost:3001/api/vehicles', async ({ request }) => {
+  http.post(`${API_BASE}/vehicles`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>
     const newVehicle = {
       id: vehicles.length + 1,
@@ -46,7 +48,7 @@ const server = setupServer(
     vehicles.push(newVehicle)
     return HttpResponse.json(newVehicle, { status: 201 })
   }),
-  http.put('http://localhost:3001/api/vehicles/:id', async ({ params, request }) => {
+  http.put(`${API_BASE}/vehicles/:id`, async ({ params, request }) => {
     const id = Number(params.id)
     const body = (await request.json()) as Record<string, unknown>
     const idx = vehicles.findIndex((v) => v.id === id)
@@ -55,12 +57,12 @@ const server = setupServer(
     }
     return HttpResponse.json(vehicles[idx] || {})
   }),
-  http.delete('http://localhost:3001/api/vehicles/:id', ({ params }) => {
+  http.delete(`${API_BASE}/vehicles/:id`, ({ params }) => {
     const id = Number(params.id)
     vehicles = vehicles.filter((v) => v.id !== id)
     return new HttpResponse(null, { status: 204 })
   }),
-  http.post('http://localhost:3001/api/vehicles/:id/restock', async ({ params, request }) => {
+  http.post(`${API_BASE}/vehicles/:id/restock`, async ({ params, request }) => {
     const id = Number(params.id)
     const body = (await request.json()) as Record<string, unknown>
     const vehicle = vehicles.find((v) => v.id === id)
@@ -69,24 +71,24 @@ const server = setupServer(
     }
     return HttpResponse.json({ success: true })
   }),
-  http.post('http://localhost:3001/api/auth/register', async ({ request }) => {
+  http.post(`${API_BASE}/auth/register`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>
     if (body.email === 'existing@test.com') {
       return HttpResponse.json({ error: 'Email already registered' }, { status: 409 })
     }
     return HttpResponse.json({
       token: 'register-token',
-      user: { id: 3, email: body.email as string, name: body.name as string, role: 'USER' },
+      user: { id: 3, email: body.email as string, name: body.name as string, role: 'user' },
     })
   }),
-  http.post('http://localhost:3001/api/auth/login', async ({ request }) => {
+  http.post(`${API_BASE}/auth/login`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>
     if (body.email === 'fail@test.com') {
       return HttpResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
     return HttpResponse.json({
       token: 'login-token',
-      user: { id: 1, email: body.email as string, name: 'Test User', role: 'USER' },
+      user: { id: 1, email: body.email as string, name: 'Test User', role: 'user' },
     })
   }),
 )
@@ -97,6 +99,7 @@ afterEach(() => {
   localStorage.clear()
   window.history.pushState({}, '', '/')
   vehicles = [...mockVehicles]
+  vi.restoreAllMocks()
 })
 afterAll(() => server.close())
 
@@ -196,7 +199,7 @@ describe('App', () => {
   describe('dashboard', () => {
     it('renders vehicles when authenticated', async () => {
       localStorage.setItem('token', 'fake-token')
-      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'USER' }))
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'user' }))
       render(<App />)
       expect(await screen.findByText('Toyota Camry')).toBeInTheDocument()
       expect(screen.getByText('Honda Civic')).toBeInTheDocument()
@@ -204,7 +207,7 @@ describe('App', () => {
 
     it('shows price and stock quantity for each vehicle', async () => {
       localStorage.setItem('token', 'fake-token')
-      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'USER' }))
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'user' }))
       render(<App />)
       expect(await screen.findByText('$25,000.00')).toBeInTheDocument()
       expect(screen.getByText('5 in stock')).toBeInTheDocument()
@@ -213,7 +216,7 @@ describe('App', () => {
 
     it('disables buy button for out-of-stock vehicles', async () => {
       localStorage.setItem('token', 'fake-token')
-      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'USER' }))
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'user' }))
       render(<App />)
       await screen.findByText('Honda Civic')
       const buyButtons = screen.getAllByRole('button', { name: 'Buy' })
@@ -223,7 +226,7 @@ describe('App', () => {
     it('handles buy button click successfully', async () => {
       const user = userEvent.setup()
       localStorage.setItem('token', 'fake-token')
-      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'USER' }))
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'user' }))
       render(<App />)
       await screen.findByText('Toyota Camry')
       await user.click(screen.getAllByRole('button', { name: 'Buy' })[0])
@@ -237,7 +240,7 @@ describe('App', () => {
 
     it('shows search inputs on the dashboard', async () => {
       localStorage.setItem('token', 'fake-token')
-      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'USER' }))
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'user' }))
       render(<App />)
       expect(await screen.findByPlaceholderText('Make')).toBeInTheDocument()
       expect(screen.getByPlaceholderText('Model')).toBeInTheDocument()
@@ -248,7 +251,7 @@ describe('App', () => {
     it('filters vehicles by make via search', async () => {
       const user = userEvent.setup()
       localStorage.setItem('token', 'fake-token')
-      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'USER' }))
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'user' }))
       render(<App />)
       expect(await screen.findByText('Toyota Camry')).toBeInTheDocument()
       expect(screen.getByText('Honda Civic')).toBeInTheDocument()
@@ -260,12 +263,12 @@ describe('App', () => {
 
     it('shows error state when API call fails', async () => {
       server.use(
-        http.get('http://localhost:3001/api/vehicles/search', () => {
+        http.get(`${API_BASE}/vehicles/search`, () => {
           return HttpResponse.json({ error: 'Internal server error' }, { status: 500 })
         }),
       )
       localStorage.setItem('token', 'fake-token')
-      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'USER' }))
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'user' }))
       render(<App />)
       expect(await screen.findByText('Internal server error')).toBeInTheDocument()
     })
@@ -274,7 +277,7 @@ describe('App', () => {
   describe('admin', () => {
     beforeEach(() => {
       localStorage.setItem('token', 'fake-token')
-      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'admin@test.com', name: 'Admin User', role: 'ADMIN' }))
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'admin@test.com', name: 'Admin User', role: 'admin' }))
       window.history.pushState({}, '', '/admin')
     })
 
@@ -319,12 +322,29 @@ describe('App', () => {
       expect(screen.queryByText('Toyota')).not.toBeInTheDocument()
       expect(screen.getByText('Honda')).toBeInTheDocument()
     })
+
+    it('restocks a vehicle and updates the quantity', async () => {
+      const user = userEvent.setup()
+      localStorage.setItem('token', 'fake-token')
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'admin@test.com', name: 'Admin User', role: 'admin' }))
+      window.history.pushState({}, '', '/admin')
+      render(<App />)
+      expect(await screen.findByText('Vehicle Management')).toBeInTheDocument()
+
+      await user.click(screen.getAllByRole('button', { name: /restock/i })[0])
+
+      const qtyInput = screen.getByPlaceholderText('Qty')
+      await user.type(qtyInput, '3')
+      await user.click(screen.getByRole('button', { name: /confirm/i }))
+
+      expect(await screen.findByText('Vehicle restocked successfully')).toBeInTheDocument()
+    })
   })
 
   describe('access control', () => {
     it('redirects non-admin users away from /admin', async () => {
       localStorage.setItem('token', 'fake-token')
-      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'user@test.com', name: 'Regular User', role: 'USER' }))
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'user@test.com', name: 'Regular User', role: 'user' }))
       window.history.pushState({}, '', '/admin')
       render(<App />)
       expect(await screen.findByText('Toyota Camry')).toBeInTheDocument()
@@ -340,7 +360,15 @@ describe('App', () => {
       expect(screen.getByText('Page not found')).toBeInTheDocument()
     })
 
-    it('provides link back to dashboard on 404 page', () => {
+    it('provides link back to login on 404 page when not authenticated', () => {
+      window.history.pushState({}, '', '/nope')
+      render(<App />)
+      expect(screen.getByRole('link', { name: 'Go to Login' })).toBeInTheDocument()
+    })
+
+    it('provides link to dashboard on 404 page when authenticated', () => {
+      localStorage.setItem('token', 'fake-token')
+      localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@test.com', name: 'Test User', role: 'user' }))
       window.history.pushState({}, '', '/nope')
       render(<App />)
       expect(screen.getByRole('link', { name: 'Go to Dashboard' })).toBeInTheDocument()

@@ -79,6 +79,14 @@ export default function Dashboard() {
     }
   }
 
+  const CATEGORY_LABELS: Record<string, string> = {
+    SEDAN: 'Sedan',
+    SUV: 'SUV',
+    TRUCK: 'Truck',
+    COUPE: 'Coupe',
+    VAN: 'Van',
+  }
+
   function formatPrice(price: number) {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -216,7 +224,7 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-500 mt-1">{v.year}</p>
                 <div className="mt-2 flex items-center gap-2">
                   <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                    {v.category}
+                    {CATEGORY_LABELS[v.category] || v.category}
                   </span>
                 </div>
                 <p className="mt-4 text-2xl font-bold text-gray-900">{formatPrice(v.price)}</p>

@@ -12,7 +12,7 @@ export default function Navbar() {
             Dealership Inventory
           </Link>
           <div className="flex items-center gap-4">
-            {user?.role === 'ADMIN' && (
+            {user?.role === 'admin' && (
               <Link to="/admin" className="text-sm text-blue-600 hover:text-blue-800 font-medium">
                 Admin
               </Link>
