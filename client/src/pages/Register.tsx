@@ -37,93 +37,118 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-gray-900 text-center mb-8">Create an account</h1>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 text-red-700 text-sm rounded-md px-3 py-2 border border-red-200">
-              {error}
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-surface-secondary px-4 py-12">
+      <div className="w-full max-w-sm animate-fade-in-up">
+        {/* Card */}
+        <div className="card p-8">
+          {/* Brand header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent text-white mb-4">
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 17a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2" />
+                <circle cx="7" cy="15" r="2" />
+                <circle cx="17" cy="15" r="2" />
+                <path d="M5 9l2-4h10l2 4" />
+              </svg>
             </div>
-          )}
-
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Name
-            </label>
-            <input
-              id="name"
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Your name"
-            />
+            <h1 className="text-xl font-bold text-text-primary">Create an account</h1>
+            <p className="text-sm text-text-muted mt-1">Join the dealership network</p>
           </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="you@example.com"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="flex items-start gap-2.5 rounded-lg bg-danger-light border border-danger-border px-3.5 py-3 text-sm text-danger">
+                <svg className="w-4 h-4 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="At least 6 characters"
-            />
-          </div>
+            <div>
+              <label htmlFor="name" className="input-label">Name</label>
+              <input
+                id="name"
+                type="text"
+                autoComplete="name"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="input"
+                placeholder="Your name"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-              Confirm password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Repeat your password"
-            />
-          </div>
+            <div>
+              <label htmlFor="email" className="input-label">Email</label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input"
+                placeholder="you@example.com"
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? 'Creating account...' : 'Create account'}
-          </button>
-        </form>
+            <div>
+              <label htmlFor="password" className="input-label">Password</label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input"
+                placeholder="At least 6 characters"
+              />
+            </div>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
-          Already have an account?{' '}
-          <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
-            Sign in
-          </Link>
-        </p>
+            <div>
+              <label htmlFor="confirmPassword" className="input-label">Confirm password</label>
+              <input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="input"
+                placeholder="Repeat your password"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="btn-primary w-full"
+            >
+              {submitting ? (
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+                  </svg>
+                  Creating account…
+                </span>
+              ) : (
+                'Create account'
+              )}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-text-secondary">
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold text-accent hover:text-accent-hover transition-colors duration-150">
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )

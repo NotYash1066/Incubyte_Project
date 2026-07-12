@@ -42,6 +42,13 @@ const emptyForm: FormData = {
   quantity: '0',
 }
 
+function formatPrice(price: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(price)
+}
+
 export default function Admin() {
   const { user } = useAuth()
 
@@ -78,9 +85,15 @@ export default function Admin() {
     fetchVehicles()
   }, [])
 
+  useEffect(() => {
+    if (feedback) {
+      const timer = setTimeout(() => setFeedback(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [feedback])
+
   function showFeedback(type: 'success' | 'error', message: string) {
     setFeedback({ type, message })
-    setTimeout(() => setFeedback(null), 5000)
   }
 
   function handleAddFormChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -192,31 +205,43 @@ export default function Admin() {
     }
   }
 
-  function formatPrice(price: number) {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price)
-  }
-
+  // ── Loading state ──
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-surface-secondary">
         <Navbar />
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="h-8 bg-surface-tertiary rounded w-64 mb-6 animate-pulse" />
+          <div className="card divide-y divide-border animate-pulse">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex gap-4 p-4">
+                <div className="h-4 bg-surface-tertiary rounded flex-1" />
+                <div className="h-4 bg-surface-tertiary rounded flex-1" />
+                <div className="h-4 bg-surface-tertiary rounded w-20" />
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     )
   }
 
+  // ── Error state ──
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-surface-secondary">
         <Navbar />
-        <main className="max-w-7xl mx-auto px-4 py-8">
-          <div className="bg-red-50 text-red-700 text-sm rounded-md px-3 py-2 border border-red-200">
-            {error}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-start gap-3 rounded-lg bg-danger-light border border-danger-border px-4 py-3 text-sm text-danger max-w-xl mx-auto">
+            <svg className="w-5 h-5 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <div>
+              <p className="font-medium">Failed to load vehicles</p>
+              <p className="text-danger/80 mt-0.5">{error}</p>
+            </div>
           </div>
         </main>
       </div>
@@ -224,23 +249,40 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-secondary">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Feedback toast */}
         {feedback && (
           <div
-            className={`mb-6 text-sm rounded-md px-3 py-2 border ${
+            className={`mb-6 flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm shadow-[var(--shadow-card)] animate-slide-in-right ${
               feedback.type === 'success'
-                ? 'bg-green-50 text-green-700 border-green-200'
-                : 'bg-red-50 text-red-700 border-red-200'
+                ? 'bg-success-light border-success-border text-success'
+                : 'bg-danger-light border-danger-border text-danger'
             }`}
           >
-            {feedback.message}
+            {feedback.type === 'success' ? (
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            )}
+            <span className="font-medium">{feedback.message}</span>
           </div>
         )}
 
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Vehicle Management</h1>
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between mb-6 animate-fade-in-up">
+          <div>
+            <h1 className="text-2xl font-bold text-text-primary">Vehicle Management</h1>
+            <p className="text-sm text-text-muted mt-1">{vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''}</p>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -248,282 +290,197 @@ export default function Admin() {
               setEditingId(null)
               setRestockingId(null)
             }}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="btn-primary"
           >
-            {showAddForm ? 'Cancel' : 'Add Vehicle'}
+            {showAddForm ? (
+              <>
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                Cancel
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add Vehicle
+              </>
+            )}
           </button>
         </div>
 
+        {/* ── Add Form ── */}
         {showAddForm && (
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Vehicle</h2>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="card p-6 mb-8 animate-fade-in-up">
+            <h2 className="text-lg font-semibold text-text-primary mb-5">Add New Vehicle</h2>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Make</label>
-                <input
-                  name="make"
-                  placeholder="Make"
-                  value={addForm.make}
-                  onChange={handleAddFormChange}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                <label htmlFor="add-make" className="input-label">Make</label>
+                <input id="add-make" name="make" placeholder="Make" value={addForm.make} onChange={handleAddFormChange} className="input" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
-                <input
-                  name="model"
-                  placeholder="Model"
-                  value={addForm.model}
-                  onChange={handleAddFormChange}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                <label htmlFor="add-model" className="input-label">Model</label>
+                <input id="add-model" name="model" placeholder="Model" value={addForm.model} onChange={handleAddFormChange} className="input" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-                <input
-                  name="year"
-                  type="number"
-                  placeholder="Year"
-                  value={addForm.year}
-                  onChange={handleAddFormChange}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                <label htmlFor="add-year" className="input-label">Year</label>
+                <input id="add-year" name="year" type="number" placeholder="Year" value={addForm.year} onChange={handleAddFormChange} className="input" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <select
-                  name="category"
-                  value={addForm.category}
-                  onChange={handleAddFormChange}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
+                <label htmlFor="add-category" className="input-label">Category</label>
+                <select id="add-category" name="category" value={addForm.category} onChange={handleAddFormChange} className="input">
                   {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                    <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
-                <input
-                  name="price"
-                  type="number"
-                  placeholder="Price"
-                  value={addForm.price}
-                  onChange={handleAddFormChange}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                <label htmlFor="add-price" className="input-label">Price</label>
+                <input id="add-price" name="price" type="number" placeholder="Price" value={addForm.price} onChange={handleAddFormChange} className="input" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-                <input
-                  name="quantity"
-                  type="number"
-                  placeholder="Quantity"
-                  value={addForm.quantity}
-                  onChange={handleAddFormChange}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+                <label htmlFor="add-quantity" className="input-label">Quantity</label>
+                <input id="add-quantity" name="quantity" type="number" placeholder="1" value={addForm.quantity} onChange={handleAddFormChange} className="input" />
               </div>
             </div>
-            <div className="flex gap-2 mt-4">
-              <button
-                type="button"
-                onClick={handleAdd}
-                disabled={submitting || !addForm.make || !addForm.model || !addForm.year || !addForm.price}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? 'Saving...' : 'Save'}
+            <div className="flex gap-2 mt-6 pt-5 border-t border-border">
+              <button type="button" onClick={handleAdd} disabled={submitting || !addForm.make || !addForm.model || !addForm.year || !addForm.price} className="btn-primary">
+                {submitting ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <circle cx="12" cy="12" r="10" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+                    </svg>
+                    Saving…
+                  </span>
+                ) : 'Save'}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddForm(false)
-                  setAddForm(emptyForm)
-                }}
-                disabled={submitting}
-                className="rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
-              >
+              <button type="button" onClick={() => { setShowAddForm(false); setAddForm(emptyForm) }} disabled={submitting} className="btn-secondary">
                 Cancel
               </button>
             </div>
           </div>
         )}
 
+        {/* ── Vehicle Table ── */}
         {vehicles.length === 0 ? (
-          <p className="text-center text-gray-500 py-12">No vehicles available.</p>
+          <div className="text-center py-16 animate-fade-in">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-surface-tertiary mb-4">
+              <svg className="w-8 h-8 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-text-primary mb-1">No vehicles yet</h3>
+            <p className="text-sm text-text-muted">Add your first vehicle to get started.</p>
+          </div>
         ) : (
-          <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  {['Make', 'Model', 'Year', 'Category', 'Price', 'Qty', 'Actions'].map((h) => (
-                    <th
-                      key={h}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {vehicles.map((v) => (
-                  <tr key={v.id} className="hover:bg-gray-50">
-                    {editingId === v.id ? (
-                      <>
-                        <td className="px-6 py-4">
-                          <input
-                            name="make"
-                            value={editForm.make}
-                            onChange={handleEditFormChange}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <input
-                            name="model"
-                            value={editForm.model}
-                            onChange={handleEditFormChange}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <input
-                            name="year"
-                            type="number"
-                            value={editForm.year}
-                            onChange={handleEditFormChange}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <select
-                            name="category"
-                            value={editForm.category}
-                            onChange={handleEditFormChange}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {CATEGORIES.map((c) => (
-                              <option key={c} value={c}>
-                                {c}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-6 py-4">
-                          <input
-                            name="price"
-                            type="number"
-                            value={editForm.price}
-                            onChange={handleEditFormChange}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <input
-                            name="quantity"
-                            type="number"
-                            value={editForm.quantity}
-                            onChange={handleEditFormChange}
-                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(v.id)}
-                            disabled={submitting}
-                            className="text-sm font-medium text-blue-600 hover:text-blue-800 mr-3"
-                          >
-                            Save
-                          </button>
-                          <button
-                            type="button"
-                            onClick={cancelEdit}
-                            disabled={submitting}
-                            className="text-sm font-medium text-gray-600 hover:text-gray-800"
-                          >
-                            Cancel
-                          </button>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.make}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.model}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.year}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{CATEGORY_LABELS[v.category] || v.category}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatPrice(v.price)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.quantity}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => startEdit(v)}
-                              disabled={submitting}
-                              className="font-medium text-blue-600 hover:text-blue-800"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(v.id)}
-                              disabled={submitting}
-                              className="font-medium text-red-600 hover:text-red-800"
-                            >
-                              Delete
-                            </button>
-                            {restockingId === v.id ? (
-                              <span className="inline-flex items-center gap-1">
-                                <input
-                                  type="number"
-                                  value={restockQty}
-                                  onChange={(e) => setRestockQty(e.target.value)}
-                                  placeholder="Qty"
-                                  className="w-16 border border-gray-300 rounded px-1 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleRestock(v.id)}
-                                  disabled={submitting || !restockQty || Number(restockQty) <= 0}
-                                  className="font-medium text-green-600 hover:text-green-800 text-xs"
-                                >
-                                  Confirm
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setRestockingId(null)
-                                    setRestockQty('')
-                                  }}
-                                  className="font-medium text-gray-500 hover:text-gray-700 text-xs"
-                                >
-                                  Cancel
-                                </button>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRestockingId(v.id)
-                                  setRestockQty('')
-                                }}
-                                disabled={submitting}
-                                className="font-medium text-green-600 hover:text-green-800"
-                              >
-                                Restock
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </>
-                    )}
+          <div className="card overflow-hidden animate-fade-in-up">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-surface-tertiary/50">
+                    {['Make', 'Model', 'Year', 'Category', 'Price', 'Stock', 'Actions'].map((h) => (
+                      <th key={h} className="text-left px-4 sm:px-6 py-3.5 text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {vehicles.map((v) => (
+                    <tr key={v.id} className="transition-colors duration-150 hover:bg-surface-tertiary/40">
+                      {editingId === v.id ? (
+                        <>
+                          <td className="px-4 sm:px-6 py-3"><input name="make" value={editForm.make} onChange={handleEditFormChange} className="input py-1.5 text-xs" /></td>
+                          <td className="px-4 sm:px-6 py-3"><input name="model" value={editForm.model} onChange={handleEditFormChange} className="input py-1.5 text-xs" /></td>
+                          <td className="px-4 sm:px-6 py-3"><input name="year" type="number" value={editForm.year} onChange={handleEditFormChange} className="input py-1.5 text-xs w-20" /></td>
+                          <td className="px-4 sm:px-6 py-3">
+                            <select name="category" value={editForm.category} onChange={handleEditFormChange} className="input py-1.5 text-xs">
+                              {CATEGORIES.map((c) => (<option key={c} value={c}>{CATEGORY_LABELS[c]}</option>))}
+                            </select>
+                          </td>
+                          <td className="px-4 sm:px-6 py-3"><input name="price" type="number" value={editForm.price} onChange={handleEditFormChange} className="input py-1.5 text-xs w-24" /></td>
+                          <td className="px-4 sm:px-6 py-3"><input name="quantity" type="number" value={editForm.quantity} onChange={handleEditFormChange} className="input py-1.5 text-xs w-16" /></td>
+                          <td className="px-4 sm:px-6 py-3 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <button type="button" onClick={() => handleEdit(v.id)} disabled={submitting} className="btn-primary text-xs px-3 py-1.5">Save</button>
+                              <button type="button" onClick={cancelEdit} disabled={submitting} className="btn-ghost text-xs px-3 py-1.5">Cancel</button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 sm:px-6 py-4 font-medium text-text-primary whitespace-nowrap">{v.make}</td>
+                          <td className="px-4 sm:px-6 py-4 text-text-primary whitespace-nowrap">{v.model}</td>
+                          <td className="px-4 sm:px-6 py-4 text-text-secondary whitespace-nowrap">{v.year}</td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap"><span className="badge-blue">{CATEGORY_LABELS[v.category] || v.category}</span></td>
+                          <td className="px-4 sm:px-6 py-4 font-semibold text-text-primary whitespace-nowrap">{formatPrice(v.price)}</td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            {v.quantity > 0 ? (
+                              <span className="badge-green">{v.quantity}</span>
+                            ) : (
+                              <span className="badge-red">0</span>
+                            )}
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <button type="button" onClick={() => startEdit(v)} disabled={submitting} className="btn-ghost text-xs px-2.5 py-1.5">
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                                Edit
+                              </button>
+                              <button type="button" onClick={() => handleDelete(v.id)} disabled={submitting} className="btn-ghost text-xs px-2.5 py-1.5 text-danger hover:bg-danger-light hover:text-danger">
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                </svg>
+                                Delete
+                              </button>
+                              {restockingId === v.id ? (
+                                <span className="inline-flex items-center gap-1 ml-1">
+                                  <input
+                                    type="number"
+                                    value={restockQty}
+                                    onChange={(e) => setRestockQty(e.target.value)}
+                                    placeholder="Qty"
+                                    className="input w-14 py-1 text-xs"
+                                    autoFocus
+                                  />
+                                  <button type="button" onClick={() => handleRestock(v.id)} disabled={submitting || !restockQty || Number(restockQty) <= 0} className="btn-primary text-xs px-2 py-1">
+                                    Confirm
+                                  </button>
+                                  <button type="button" onClick={() => { setRestockingId(null); setRestockQty('') }} className="btn-ghost text-xs px-2 py-1">
+                                    ×
+                                  </button>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => { setRestockingId(v.id); setRestockQty('') }}
+                                  disabled={submitting}
+                                  className="btn-ghost text-xs px-2.5 py-1.5 text-success hover:bg-success-light"
+                                >
+                                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                  </svg>
+                                  Restock
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </main>

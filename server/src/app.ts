@@ -10,7 +10,11 @@ const app = express();
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === "production"
-    ? ["https://incubyte-dealership.vercel.app", "https://incubyte-dealership-api.onrender.com"]
+    ? [
+        "https://incubyte-dealership.vercel.app",
+        "https://incubyte-dealership-api.onrender.com",
+        "http://localhost:5173",
+      ]
     : true,
   credentials: true,
 }));

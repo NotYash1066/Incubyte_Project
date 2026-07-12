@@ -25,62 +25,89 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-gray-900 text-center mb-8">Sign in</h1>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 text-red-700 text-sm rounded-md px-3 py-2 border border-red-200">
-              {error}
+    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-surface-secondary px-4 py-12">
+      <div className="w-full max-w-sm animate-fade-in-up">
+        {/* Card */}
+        <div className="card p-8">
+          {/* Brand header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent text-white mb-4">
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 17a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2" />
+                <circle cx="7" cy="15" r="2" />
+                <circle cx="17" cy="15" r="2" />
+                <path d="M5 9l2-4h10l2 4" />
+              </svg>
             </div>
-          )}
-
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="you@example.com"
-            />
+            <h1 className="text-xl font-bold text-text-primary">Sign in</h1>
+            <p className="text-sm text-text-muted mt-1">Sign in to your account</p>
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter your password"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="flex items-start gap-2.5 rounded-lg bg-danger-light border border-danger-border px-3.5 py-3 text-sm text-danger">
+                <svg className="w-4 h-4 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
+            <div>
+              <label htmlFor="email" className="input-label">Email</label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input"
+                placeholder="you@example.com"
+              />
+            </div>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
-          Don&apos;t have an account?{' '}
-          <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
-            Create one
-          </Link>
-        </p>
+            <div>
+              <label htmlFor="password" className="input-label">Password</label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input"
+                placeholder="Enter your password"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="btn-primary w-full"
+            >
+              {submitting ? (
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+                  </svg>
+                  Signing in…
+                </span>
+              ) : (
+                'Sign in'
+              )}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-text-secondary">
+            Don&apos;t have an account?{' '}
+            <Link to="/register" className="font-semibold text-accent hover:text-accent-hover transition-colors duration-150">
+              Create one
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )

@@ -1,7 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL;
-if (!API_URL) {
-  throw new Error("VITE_API_URL environment variable is not set. Set it to your API base URL.");
-}
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('token');
