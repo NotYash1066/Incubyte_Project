@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach, beforeAll, afterAll, afterEach, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
@@ -230,6 +230,10 @@ describe('App', () => {
       render(<App />)
       await screen.findByText('Toyota Camry')
       await user.click(screen.getAllByRole('button', { name: 'Buy' })[0])
+
+      const confirmBtn = screen.getByRole('button', { name: 'Purchase' })
+      await user.click(confirmBtn)
+
       expect(await screen.findByText('Purchase successful!')).toBeInTheDocument()
     })
 
@@ -296,11 +300,11 @@ describe('App', () => {
       await user.click(screen.getByRole('button', { name: /add vehicle/i }))
       expect(screen.getByText('Add New Vehicle')).toBeInTheDocument()
 
-      await user.type(screen.getByPlaceholderText('Make'), 'Tesla')
-      await user.type(screen.getByPlaceholderText('Model'), 'Model 3')
-      await user.type(screen.getByPlaceholderText('Year'), '2024')
+      await user.type(screen.getByPlaceholderText('e.g. Toyota'), 'Tesla')
+      await user.type(screen.getByPlaceholderText('e.g. Camry'), 'Model 3')
+      await user.type(screen.getByPlaceholderText('e.g. 2024'), '2024')
       await user.selectOptions(screen.getByRole('combobox'), 'SUV')
-      await user.type(screen.getByPlaceholderText('Price'), '45000')
+      await user.type(screen.getByPlaceholderText('e.g. 35000'), '45000')
 
       await user.click(screen.getByRole('button', { name: /^save$/i }))
 
@@ -310,7 +314,6 @@ describe('App', () => {
     })
 
     it('deletes a vehicle and removes it from the list', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true)
       const user = userEvent.setup()
       render(<App />)
       expect(await screen.findByText('Vehicle Management')).toBeInTheDocument()
@@ -318,9 +321,14 @@ describe('App', () => {
       const deleteButtons = screen.getAllByRole('button', { name: /delete/i })
       await user.click(deleteButtons[0])
 
+      const confirmBtn = within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' })
+      await user.click(confirmBtn)
+
       expect(await screen.findByText('Vehicle deleted successfully')).toBeInTheDocument()
-      expect(screen.queryByText('Toyota')).not.toBeInTheDocument()
-      expect(screen.getByText('Honda')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByText('Honda')).not.toBeInTheDocument()
+      })
+      expect(screen.getByText('Toyota')).toBeInTheDocument()
     })
 
     it('restocks a vehicle and updates the quantity', async () => {

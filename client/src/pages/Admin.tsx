@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Navigate } from 'react-router-dom'
 import { apiRequest } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import Navbar from '../components/Navbar'
+import Modal from '../components/Modal'
 
 interface Vehicle {
   id: number
@@ -42,6 +43,9 @@ const emptyForm: FormData = {
   quantity: '0',
 }
 
+type SortKey = 'make' | 'model' | 'year' | 'category' | 'price' | 'quantity'
+type SortDir = 'asc' | 'desc'
+
 function formatPrice(price: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -50,7 +54,7 @@ function formatPrice(price: number) {
 }
 
 export default function Admin() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,6 +67,17 @@ export default function Admin() {
   const [restockingId, setRestockingId] = useState<number | null>(null)
   const [restockQty, setRestockQty] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // ── Delete confirmation modal ──
+  const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  // ── Logout confirmation modal ──
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+
+  // ── Sorting ──
+  const [sortKey, setSortKey] = useState<SortKey>('make')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   if (!user || user.role !== 'admin') {
     return <Navigate to="/" replace />
@@ -122,6 +137,53 @@ export default function Admin() {
     setEditForm(emptyForm)
   }
 
+  // ── Sort toggle ──
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
+  function SortIcon({ column }: { column: SortKey }) {
+    if (sortKey !== column) {
+      return (
+        <svg className="w-3 h-3 text-text-muted/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 3L12 7L16 3" />
+          <path d="M8 21L12 17L16 21" />
+        </svg>
+      )
+    }
+    return sortDir === 'asc' ? (
+      <svg className="w-3 h-3 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 3L12 7L16 3" />
+      </svg>
+    ) : (
+      <svg className="w-3 h-3 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 21L12 17L16 21" />
+      </svg>
+    )
+  }
+
+  const sortedVehicles = useMemo(() => {
+    const sorted = [...vehicles]
+    sorted.sort((a, b) => {
+      let cmp = 0
+      switch (sortKey) {
+        case 'make': cmp = a.make.localeCompare(b.make); break
+        case 'model': cmp = a.model.localeCompare(b.model); break
+        case 'year': cmp = a.year - b.year; break
+        case 'category': cmp = a.category.localeCompare(b.category); break
+        case 'price': cmp = a.price - b.price; break
+        case 'quantity': cmp = a.quantity - b.quantity; break
+      }
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+    return sorted
+  }, [vehicles, sortKey, sortDir])
+
   async function handleAdd() {
     setSubmitting(true)
     try {
@@ -172,17 +234,18 @@ export default function Admin() {
     }
   }
 
-  async function handleDelete(id: number) {
-    if (!window.confirm('Are you sure you want to delete this vehicle?')) return
-    setSubmitting(true)
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      await apiRequest(`/vehicles/${id}`, { method: 'DELETE' })
+      await apiRequest(`/vehicles/${deleteTarget.id}`, { method: 'DELETE' })
+      setDeleteTarget(null)
       showFeedback('success', 'Vehicle deleted successfully')
       await fetchVehicles()
     } catch (err) {
       showFeedback('error', err instanceof Error ? err.message : 'Failed to delete vehicle')
     } finally {
-      setSubmitting(false)
+      setDeleting(false)
     }
   }
 
@@ -250,11 +313,27 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-surface-secondary">
-      <Navbar />
+      <Navbar onLogoutClick={() => setShowLogoutModal(true)} />
+
+      <Modal
+        open={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        title="Sign out?"
+        confirmLabel="Sign out"
+        destructive
+        onConfirm={() => {
+          logout()
+        }}
+      >
+        Are you sure you want to sign out? You&apos;ll need to sign back in to manage inventory.
+      </Modal>
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Feedback toast */}
         {feedback && (
           <div
+            role="alert"
+            aria-live="polite"
             className={`mb-6 flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm shadow-[var(--shadow-card)] animate-slide-in-right ${
               feedback.type === 'success'
                 ? 'bg-success-light border-success-border text-success'
@@ -318,16 +397,16 @@ export default function Admin() {
             <h2 className="text-lg font-semibold text-text-primary mb-5">Add New Vehicle</h2>
             <div className="grid grid-cols-2 gap-x-4 gap-y-5">
               <div>
-                <label htmlFor="add-make" className="input-label">Make</label>
-                <input id="add-make" name="make" placeholder="Make" value={addForm.make} onChange={handleAddFormChange} className="input" />
+                <label htmlFor="add-make" className="input-label">Make <span className="text-danger">*</span></label>
+                <input id="add-make" name="make" placeholder="e.g. Toyota" value={addForm.make} onChange={handleAddFormChange} className="input" required />
               </div>
               <div>
-                <label htmlFor="add-model" className="input-label">Model</label>
-                <input id="add-model" name="model" placeholder="Model" value={addForm.model} onChange={handleAddFormChange} className="input" />
+                <label htmlFor="add-model" className="input-label">Model <span className="text-danger">*</span></label>
+                <input id="add-model" name="model" placeholder="e.g. Camry" value={addForm.model} onChange={handleAddFormChange} className="input" required />
               </div>
               <div>
-                <label htmlFor="add-year" className="input-label">Year</label>
-                <input id="add-year" name="year" type="number" placeholder="Year" value={addForm.year} onChange={handleAddFormChange} className="input" />
+                <label htmlFor="add-year" className="input-label">Year <span className="text-danger">*</span></label>
+                <input id="add-year" name="year" type="number" placeholder="e.g. 2024" value={addForm.year} onChange={handleAddFormChange} className="input" required />
               </div>
               <div>
                 <label htmlFor="add-category" className="input-label">Category</label>
@@ -338,12 +417,12 @@ export default function Admin() {
                 </select>
               </div>
               <div>
-                <label htmlFor="add-price" className="input-label">Price</label>
-                <input id="add-price" name="price" type="number" placeholder="Price" value={addForm.price} onChange={handleAddFormChange} className="input" />
+                <label htmlFor="add-price" className="input-label">Price <span className="text-danger">*</span></label>
+                <input id="add-price" name="price" type="number" placeholder="e.g. 35000" value={addForm.price} onChange={handleAddFormChange} className="input" required />
               </div>
               <div>
                 <label htmlFor="add-quantity" className="input-label">Quantity</label>
-                <input id="add-quantity" name="quantity" type="number" placeholder="1" value={addForm.quantity} onChange={handleAddFormChange} className="input" />
+                <input id="add-quantity" name="quantity" type="number" placeholder="1" min="0" value={addForm.quantity} onChange={handleAddFormChange} className="input" />
               </div>
             </div>
             <div className="flex gap-2 mt-6 pt-5 border-t border-border">
@@ -382,15 +461,32 @@ export default function Admin() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-surface-tertiary/50">
-                    {['Make', 'Model', 'Year', 'Category', 'Price', 'Stock', 'Actions'].map((h) => (
-                      <th key={h} className="text-left px-4 sm:px-6 py-3.5 text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                        {h}
+                    {([
+                      { key: 'make', label: 'Make' },
+                      { key: 'model', label: 'Model' },
+                      { key: 'year', label: 'Year' },
+                      { key: 'category', label: 'Category' },
+                      { key: 'price', label: 'Price' },
+                      { key: 'quantity', label: 'Stock' },
+                    ] as { key: SortKey; label: string }[]).map(({ key, label }) => (
+                      <th
+                        key={key}
+                        className="px-4 sm:px-6 py-3.5 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer select-none hover:text-text-primary transition-colors duration-150"
+                        onClick={() => toggleSort(key)}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {label}
+                          <SortIcon column={key} />
+                        </span>
                       </th>
                     ))}
+                    <th className="px-4 sm:px-6 py-3.5 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {vehicles.map((v) => (
+                  {sortedVehicles.map((v) => (
                     <tr key={v.id} className="transition-colors duration-150 hover:bg-surface-tertiary/40">
                       {editingId === v.id ? (
                         <>
@@ -417,24 +513,32 @@ export default function Admin() {
                           <td className="px-4 sm:px-6 py-4 text-text-primary whitespace-nowrap">{v.model}</td>
                           <td className="px-4 sm:px-6 py-4 text-text-secondary whitespace-nowrap">{v.year}</td>
                           <td className="px-4 sm:px-6 py-4 whitespace-nowrap"><span className="badge-blue">{CATEGORY_LABELS[v.category] || v.category}</span></td>
-                          <td className="px-4 sm:px-6 py-4 font-semibold text-text-primary whitespace-nowrap">{formatPrice(v.price)}</td>
+                          <td className="px-4 sm:px-6 py-4 font-semibold text-text-primary whitespace-nowrap font-mono">{formatPrice(v.price)}</td>
                           <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                            {v.quantity > 0 ? (
+                            {v.quantity > 5 ? (
                               <span className="badge-green">{v.quantity}</span>
+                            ) : v.quantity > 0 ? (
+                              <span className="badge-amber">{v.quantity}</span>
                             ) : (
                               <span className="badge-red">0</span>
                             )}
                           </td>
                           <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
-                              <button type="button" onClick={() => startEdit(v)} disabled={submitting} className="btn-ghost text-xs px-2.5 py-1.5">
+                              <button type="button" onClick={() => startEdit(v)} disabled={submitting} className="btn-ghost text-xs px-2.5 py-1.5" title="Edit vehicle">
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                 </svg>
                                 Edit
                               </button>
-                              <button type="button" onClick={() => handleDelete(v.id)} disabled={submitting} className="btn-ghost text-xs px-2.5 py-1.5 text-danger hover:bg-danger-light hover:text-danger">
+                              <button
+                                type="button"
+                                onClick={() => setDeleteTarget(v)}
+                                disabled={submitting}
+                                className="btn-ghost text-xs px-2.5 py-1.5 text-danger hover:bg-danger-light hover:text-danger"
+                                title="Delete vehicle"
+                              >
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="3 6 5 6 21 6" />
                                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
@@ -454,8 +558,11 @@ export default function Admin() {
                                   <button type="button" onClick={() => handleRestock(v.id)} disabled={submitting || !restockQty || Number(restockQty) <= 0} className="btn-primary text-xs px-2 py-1">
                                     Confirm
                                   </button>
-                                  <button type="button" onClick={() => { setRestockingId(null); setRestockQty('') }} className="btn-ghost text-xs px-2 py-1">
-                                    ×
+                                  <button type="button" onClick={() => { setRestockingId(null); setRestockQty('') }} className="btn-ghost text-xs px-2 py-1" aria-label="Cancel restock">
+                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <line x1="18" y1="6" x2="6" y2="18" />
+                                      <line x1="6" y1="6" x2="18" y2="18" />
+                                    </svg>
                                   </button>
                                 </span>
                               ) : (
@@ -464,6 +571,7 @@ export default function Admin() {
                                   onClick={() => { setRestockingId(v.id); setRestockQty('') }}
                                   disabled={submitting}
                                   className="btn-ghost text-xs px-2.5 py-1.5 text-success hover:bg-success-light"
+                                  title="Restock vehicle"
                                 >
                                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -484,6 +592,23 @@ export default function Admin() {
           </div>
         )}
       </main>
+
+      {/* ── Delete Confirmation Modal ── */}
+      <Modal
+        open={deleteTarget !== null}
+        onClose={() => { if (!deleting) setDeleteTarget(null) }}
+        title="Delete vehicle?"
+        confirmLabel="Delete"
+        destructive
+        loading={deleting}
+        disabled={deleting}
+        onConfirm={handleDelete}
+      >
+        <p>
+          Are you sure you want to delete the <strong>{deleteTarget?.make} {deleteTarget?.model}</strong> ({deleteTarget?.year})?
+        </p>
+        <p className="mt-2">This action cannot be undone.</p>
+      </Modal>
     </div>
   )
 }
